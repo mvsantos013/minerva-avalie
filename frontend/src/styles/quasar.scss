@@ -1,0 +1,9 @@
+@import "./quasar.variables.scss";
+// @import "~quasar-styl";
+// @import '~quasar-addon-styl';
+
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}

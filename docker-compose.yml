@@ -1,0 +1,79 @@
+version: '3'
+services:
+
+  # Database service (MongoDB)
+  mongodb:
+    image: mongo:7.0.2
+    restart: unless-stopped
+    container_name: minerva-avalie-mongodb
+    networks:
+      - app_network
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGODB_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_PASSWORD}
+    volumes:
+      - ./data:/data/db
+
+  # Database GUI service (Mongo Express)    
+  mongo-express:
+    image: mongo-express
+    container_name: minerva-avalie-mongodb-express
+    restart: unless-stopped
+    ports:
+      - "8089:8081"
+    networks:
+      - app_network
+    environment:
+      ME_CONFIG_MONGODB_SERVER: mongodb
+      ME_CONFIG_BASICAUTH_USERNAME: ${MONGODB_USERNAME}
+      ME_CONFIG_BASICAUTH_PASSWORD: ${MONGODB_PASSWORD}
+      ME_CONFIG_MONGODB_ADMINUSERNAME: ${MONGODB_USERNAME}
+      ME_CONFIG_MONGODB_ADMINPASSWORD: ${MONGODB_PASSWORD}
+      ME_CONFIG_MONGODB_URL: mongo://${MONGODB_USERNAME}:${MONGODB_USERNAME}@mongo:27017/ 
+    depends_on:
+      - mongodb
+
+  # Backend service (FastAPI)
+  backend:
+    image: 'minerva-avalie-backend:latest'
+    build:
+      context: ./backend
+    restart: unless-stopped
+    container_name: minerva-avalie-backend
+    networks:
+      - app_network
+    environment:
+      STAGE: ${STAGE}
+    ports:
+      - "5001:5001"
+    volumes:
+      - ./backend:/app
+
+  # Authentication service database (MySQL)
+  auth-db:
+    image: mysql:latest
+    container_name: minerva-avalie-auth-db
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_AUTH_ROOT_PASSWORD}
+      MYSQL_USER: ${MYSQL_AUTH_USER}
+      MYSQL_PASSWORD: ${MYSQL_AUTH_PASSWORD}
+      MYSQL_DATABASE: supertokens
+    networks:
+      - app_network
+    restart: unless-stopped
+    volumes:
+      - ./data_auth:/var/lib/mysql
+
+  # Authentication service (SuperTokens)
+  auth-service:
+    image: registry.supertokens.io/supertokens/supertokens-mysql:7.0
+    container_name: minerva-avalie-auth-service
+    restart: unless-stopped
+    environment:
+      MYSQL_CONNECTION_URI: mysql://${MYSQL_AUTH_USER}:${MYSQL_AUTH_PASSWORD}@auth-db:3306/supertokens
+    networks:
+      - app_network
+
+networks:
+  app_network:
+    driver: bridge
